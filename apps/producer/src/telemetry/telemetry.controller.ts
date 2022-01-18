@@ -12,11 +12,6 @@ export class TelemetryController {
   }
 
   @Get(':id')
-  public getMinerIdsForFleet(@Param('id') fleetId: string): Telemetry {
-    return this.telemetryService.getTelemetry(fleetId);
-  }
-
-  @Get(':id')
   public getTelemetry(@Param('id') id: string): Telemetry {
     return this.telemetryService.getTelemetry(id);
   }
