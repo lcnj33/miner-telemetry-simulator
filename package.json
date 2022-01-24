@@ -18,7 +18,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./apps/miner/test/jest-e2e.json"
+    "test:e2e": "jest --config ./jest-e2e.json"
   },
   "dependencies": {
     "@nestjs/axios": "^0.0.4",
@@ -28,6 +28,8 @@
     "@nestjs/microservices": "^8.2.5",
     "@nestjs/platform-express": "^8.0.0",
     "@nestjs/schedule": "^1.0.2",
+    "@types/async": "^3.2.12",
+    "async": "^3.2.3",
     "class-validator": "^0.13.2",
     "json-rules-engine": "^6.1.2",
     "redis": "^3.1.2",
@@ -74,16 +76,13 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.(t|j)s",
+      "!**/test/**"
     ],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
     "roots": [
-      "<rootDir>/apps/",
-      "<rootDir>/libs/"
-    ],
-    "moduleNameMapper": {
-      "^@miner/test-lib(|/.*)$": "<rootDir>/libs/test-lib/src/$1"
-    }
+      "<rootDir>/apps/"
+    ]
   }
 }

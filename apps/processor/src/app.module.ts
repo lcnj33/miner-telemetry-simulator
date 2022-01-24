@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { TelemetryModule } from './telemetry/telemetry.module';
+import { ProcessorModule } from './processor/processor.module';
 
 @Module({
-  imports: [TelemetryModule],
+  imports: [ProcessorModule],
   controllers: [],
   providers: [],
 })

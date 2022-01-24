@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SimulatorService } from '../simulator/simulator.service';
 import { Telemetry } from './telemetry.interface';
 
@@ -9,21 +9,18 @@ export class TelemetryService {
   constructor(private simulatorService: SimulatorService) {}
 
   public getAllMinerIds(): string[] {
-    // return Object.keys(this.simulatorService);
     return this.simulatorService.getMinerIds();
   }
 
   public getTelemetry(id: string): Telemetry {
-    this.logger.log(`requestedID: ${id}`);
-    const metrics = this.simulatorService.getMinerMetrics(id);
-
-    if (metrics === undefined) {
-      throw new NotFoundException(`Miner ${id} not found.`);
-    }
+    this.logger.log(`Request telemetry for miner: ${id}`);
+    const { minerInfo, lastMetrics } =
+      this.simulatorService.createOrGetMinerSimulationInfo(id);
 
     return {
-      id,
-      ...metrics,
+      ...minerInfo,
+      ...lastMetrics,
+      timestamp: Date.now(),
     };
   }
 }

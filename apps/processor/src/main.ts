@@ -1,10 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
-import { ProcessorModule } from './processor.module';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    ProcessorModule,
+    AppModule,
     {
       transport: Transport.REDIS,
       options: {

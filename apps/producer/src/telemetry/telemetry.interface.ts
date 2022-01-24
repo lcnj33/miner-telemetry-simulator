@@ -1,5 +1,5 @@
-import { Metrics } from '../simulator/simulator.interface';
+import { Metrics, MinerInfo } from '../simulator/simulator.interface';
 
-export interface Telemetry extends Metrics {
-  id: string;
+export interface Telemetry extends Metrics, MinerInfo {
+  timestamp: number;
 }
