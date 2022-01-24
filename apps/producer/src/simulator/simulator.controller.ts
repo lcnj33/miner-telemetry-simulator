@@ -20,7 +20,7 @@ export class SimulatorController {
   }
 
   @Get('/ambient-temp')
-  getAmbientTemp() {
-    return this.simulatorService.getAbientTemp();
+  getAmbientTemp(): number {
+    return this.simulatorService.getAmbientTemp();
   }
 }

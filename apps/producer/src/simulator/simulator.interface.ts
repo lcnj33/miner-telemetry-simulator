@@ -1,19 +1,18 @@
-interface Telemetry {
-  minerInfo: {
-    id: string;
-    location: {
-      zone: string;
-      aisle: number;
-      rack: number;
-      shelf: number;
-      position: number;
-    };
-  };
-  healthMetrics: Metrics;
-  poolStatus: {
-    connection_status: 'up' | 'down';
-  };
-  timestamp: number; // UTC
+export interface MinerSimulationInfo {
+  minerInfo: MinerInfo;
+  lastMetrics: Metrics | undefined;
+  up_timestamp: number;
+}
+
+export interface MinerInfo {
+  id: string;
+  location: MinerLocation;
+}
+
+export interface MinerLocation {
+  zone: string;
+  rack: number;
+  shelf: number;
 }
 
 export interface Metrics {
@@ -31,6 +30,7 @@ export interface Metrics {
   fan3: number;
   fan4: number;
   gigahashrate: number;
+  pool_connection: HealthState;
 }
 
 export interface FanMetrics {

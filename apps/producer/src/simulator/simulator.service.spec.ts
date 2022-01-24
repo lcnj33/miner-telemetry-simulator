@@ -12,7 +12,23 @@ describe('SimulatorService', () => {
     service = module.get<SimulatorService>(SimulatorService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  describe('createOrGetMinerSimulationInfo', () => {
+    it('should return a miner simulation info', () => {
+      const id = 'testId';
+      const simulationInfo = service.createOrGetMinerSimulationInfo(id);
+
+      expect(simulationInfo.minerInfo.id).toEqual(id);
+      expect(simulationInfo.lastMetrics).toBeDefined();
+      expect(simulationInfo.up_timestamp).toBeDefined();
+    });
+
+    it('should create a miner simulation info', () => {
+      const id = 'testId';
+      service.createOrGetMinerSimulationInfo(id);
+
+      const minerIds = service.getMinerIds();
+      expect(minerIds.length).toEqual(1);
+      expect(minerIds).toContain(id);
+    });
   });
 });
