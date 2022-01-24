@@ -1,7 +1,6 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { PollerController } from './poller.controller';
 import { PollerService } from './poller.service';
 
 @Module({
@@ -20,7 +19,7 @@ import { PollerService } from './poller.service';
       },
     ]),
   ],
-  controllers: [PollerController],
+  controllers: [],
   providers: [PollerService],
 })
 export class PollerModule {}

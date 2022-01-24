@@ -1,8 +1,10 @@
-import { HttpService } from '@nestjs/axios';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { Cron, Interval } from '@nestjs/schedule';
+import { Interval } from '@nestjs/schedule';
+import { v4 as uuidv4 } from 'uuid';
+import { each as asyncEach } from 'async';
 import { Telemetry } from 'apps/producer/src/telemetry/telemetry.interface';
 import { ErrorMessage, SuccessMessage } from './poller.interface';
 
@@ -12,7 +14,7 @@ export class PollerService implements OnModuleInit {
   private readonly TELEMETRY_ENDPOINT: string;
   private readonly MSG_CHANNEL_NAME: string;
 
-  private minerIds: string[] = [];
+  private minerIds: string[];
 
   constructor(
     private configService: ConfigService,
@@ -28,26 +30,19 @@ export class PollerService implements OnModuleInit {
   }
 
   onModuleInit() {
-    this.logger.debug('Polling miner IDs...');
-    this.httpService.get(this.TELEMETRY_ENDPOINT).subscribe({
-      next: (resp) => {
-        this.logger.debug(JSON.stringify(resp.data));
-        this.minerIds = resp.data;
-      },
-      error: (error) => {
-        this.logger.debug(JSON.stringify(error));
-      },
-    });
+    const numOfMiners = this.configService.get<number>('poller.numberOfMiners');
+    this.minerIds = Array.from({ length: numOfMiners }, () => uuidv4());
+    this.logger.debug(
+      `Poller is configured with ${numOfMiners} miners:\n${this.minerIds.join(
+        '\n',
+      )}`,
+    );
   }
-
-  // @Cron('5 * * * * *')
-  // handleCron() {}
 
   @Interval(10000)
   poll() {
-    this.logger.debug('Polling miner metrics...');
-
-    this.minerIds.forEach((id) => {
+    this.logger.log('Polling miner metrics...');
+    asyncEach(this.minerIds, (id) => {
       this.httpService
         .get<Telemetry>(`${this.TELEMETRY_ENDPOINT}/${id}`)
         .subscribe({
