@@ -15,7 +15,7 @@ export class ReporterService {
   reportMinerExeception(msg: string, telemetry: Telemetry) {
     const { id: minerId, timestamp } = telemetry;
     this.logger.error(
-      `Miner State Change Occurred! ${msg}\n` +
+      `[Miner State Change] ${msg}\n` +
         `Miner ID: ${minerId}\n` +
         `Polling Time: ${new Date(timestamp).toISOString()}`,
     );

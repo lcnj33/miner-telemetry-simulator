@@ -41,7 +41,7 @@ export class PollerService implements OnModuleInit {
 
   @Interval(10000)
   poll() {
-    this.logger.log('Polling miner metrics...');
+    this.logger.log('Polling miner telemetry...');
     asyncEach(this.minerIds, (id) => {
       this.httpService
         .get<Telemetry>(`${this.TELEMETRY_ENDPOINT}/${id}`)
