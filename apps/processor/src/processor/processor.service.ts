@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Engine as RuleEngine, Rule } from 'json-rules-engine';
+import { Engine as RuleEngine } from 'json-rules-engine';
 import {
   SuccessMessage,
   TelemetryMessage,
@@ -7,16 +7,18 @@ import {
 import { Telemetry } from 'apps/producer/src/telemetry/telemetry.interface';
 import { ReporterService } from '../reporter/reporter.service';
 import { RULE_TYPE } from './processor.constants';
+import { RULES } from './processor.rules';
 
 @Injectable()
 export class ProcessorService {
   private readonly ruleEngine: RuleEngine;
+  private minersState: Record<string, Telemetry> = {};
 
   constructor(private reporterService: ReporterService) {
     this.ruleEngine = new RuleEngine();
-    this.ruleEngine.addRule(ProcessorService.buildHealthRule());
-    this.ruleEngine.addRule(ProcessorService.buildFanTempRule());
-    this.ruleEngine.addRule(ProcessorService.buildFanSpeedRule());
+    RULES.forEach((rule) => {
+      this.ruleEngine.addRule(rule);
+    });
   }
 
   processTelemetryMessage(telemetryMsg: TelemetryMessage) {
@@ -27,115 +29,115 @@ export class ProcessorService {
     }
   }
 
-  processTelemetry(telemetry: Telemetry): Promise<void> {
-    // TODO: can disable any rule when another has been alarmed? maybe exercise the rule in specific order
-    return this.ruleEngine.run(telemetry).then((result) => {
-      result.failureResults.forEach((failure) => {
-        // console.log(`failure: ${JSON.stringify(failure)}`);
-        // the sub type is not exported
-        const conditions = failure.conditions as any;
-        switch (failure.event.type) {
-          case RULE_TYPE.MINER_HEALTH: {
-            const falseConfition = conditions.all.find(
-              (condition: { result: boolean }) => condition.result === false,
+  async processTelemetry(telemetry: Telemetry) {
+    const { id } = telemetry;
+    if (this.minersState[id] === undefined) {
+      this.minersState[id] = telemetry;
+      return;
+    }
+
+    const facts = {
+      previous: this.minersState[id],
+      incoming: telemetry,
+    };
+
+    this.minersState[id] = telemetry;
+
+    const runResult = await this.ruleEngine.run(facts);
+
+    runResult.results.forEach((result) => {
+      const conditions = result.conditions as any;
+      switch (result.event.type) {
+        case RULE_TYPE.MINER_HEALTH: {
+          const condition = conditions.all.find(
+            (condition: { fact: string }) => condition.fact === 'incoming',
+          );
+          if (condition !== undefined) {
+            this.reporterService.reportMinerExeception(
+              `Miner health failure. State: ${condition.factResult}.`,
+              telemetry,
             );
-            if (falseConfition !== undefined) {
+          }
+          break;
+        }
+        case RULE_TYPE.POOL_CONNECTION: {
+          const condition = conditions.all.find(
+            (condition: { fact: string }) => condition.fact === 'incoming',
+          );
+          if (condition !== undefined) {
+            this.reporterService.reportMinerExeception(
+              `Miner is diconnected with the configured pool. State: ${condition.factResult}.`,
+              telemetry,
+            );
+          }
+          break;
+        }
+        case RULE_TYPE.GIGAHASH_RATE: {
+          const condition = conditions.all.find(
+            (condition: { fact: string }) => condition.fact === 'incoming',
+          );
+          if (condition !== undefined) {
+            this.reporterService.reportMinerExeception(
+              `Detected a dip in gigahashrate. Gigahashrate: ${condition.factResult}.`,
+              telemetry,
+            );
+          }
+          break;
+        }
+        case RULE_TYPE.MINER_FAN_SPEED: {
+          const matches = conditions.any.filter(
+            (anyCondition: { all: any }) => {
+              return anyCondition.all[0].result && anyCondition.all[1].result;
+            },
+          );
+
+          if (matches.length === 4) {
+            this.reporterService.reportMinerExeception(
+              'Detected all fans down failure.',
+              telemetry,
+            );
+          } else {
+            matches.forEach((anyCondition: { all: any }) => {
+              const incoming = anyCondition.all[1];
               this.reporterService.reportMinerExeception(
-                `Miner health failure. State: ${falseConfition.factResult}.`,
+                `Detected a fan failure. Fan: ${incoming.path}, Speed: ${incoming.factResult}.`,
                 telemetry,
               );
-            }
-            break;
+            });
           }
-          case RULE_TYPE.MINER_FAN_TEMP: {
-            const falseConfitions = conditions.all.filter(
-              (condition: { result: boolean }) => condition.result === false,
-            );
-            falseConfitions.forEach(
-              (falseConfition: { fact: any; factResult: any }) => {
-                this.reporterService.reportMinerExeception(
-                  `Miner fan temperature spike. Sensor: ${falseConfition.fact}, Temperature: ${falseConfition.factResult}.`,
-                  telemetry,
-                );
-              },
-            );
-            break;
-          }
-          case RULE_TYPE.MINER_FAN_SPEED:
-            const falseConfitions = conditions.all.filter(
-              (condition: { result: boolean }) => condition.result === false,
-            );
-            falseConfitions.forEach(
-              (falseConfition: { fact: any; factResult: any }) => {
-                this.reporterService.reportMinerExeception(
-                  `Miner fan failure. Fan: ${falseConfition.fact}, Speed: ${falseConfition.factResult}.`,
-                  telemetry,
-                );
-              },
-            );
-            break;
+          break;
         }
-      });
-    });
-  }
+        case RULE_TYPE.MINER_FAN_TEMP: {
+          const matches = conditions.any.filter(
+            (anyCondition: { all: any }) => {
+              return anyCondition.all[0].result && anyCondition.all[1].result;
+            },
+          );
 
-  private static buildHealthRule(): Rule {
-    return new Rule({
-      conditions: {
-        all: [
-          {
-            fact: 'health',
-            operator: 'equal',
-            value: 'up',
-          },
-        ],
-      },
-      event: {
-        type: RULE_TYPE.MINER_HEALTH,
-      },
-    });
-  }
-
-  private static buildFanTempRule(): Rule {
-    const nestedConditions = [1, 2, 3, 4].flatMap((num) => [
-      {
-        fact: `temp${num}_in`,
-        operator: 'lessThan',
-        value: 85,
-      },
-      {
-        fact: `temp${num}_out`,
-        operator: 'lessThan',
-        value: 85,
-      },
-    ]);
-
-    return new Rule({
-      conditions: {
-        all: nestedConditions,
-      },
-      event: {
-        type: RULE_TYPE.MINER_FAN_TEMP,
-      },
-    });
-  }
-
-  private static buildFanSpeedRule(): Rule {
-    const nestedConditions = [1, 2, 3, 4].map((num) => {
-      return {
-        fact: `fan${num}`,
-        operator: 'greaterThan',
-        value: 10,
-      };
-    });
-
-    return new Rule({
-      conditions: {
-        all: nestedConditions,
-      },
-      event: {
-        type: RULE_TYPE.MINER_FAN_SPEED,
-      },
+          if (matches.length > 3) {
+            this.reporterService.reportMinerExeception(
+              'Detected multiple fans temperature spike. There could be an ambient temperature rise.',
+              telemetry,
+            );
+          } else {
+            matches.forEach((anyCondition: { all: any }) => {
+              const incoming = anyCondition.all[1];
+              this.reporterService.reportMinerExeception(
+                `Detected a fan temperature spike. Sensor: ${incoming.path}, Temperature: ${incoming.factResult}.`,
+                telemetry,
+              );
+            });
+          }
+          break;
+        }
+        case RULE_TYPE.AMBIENT_TEMP: {
+          this.reporterService.reportMinerExeception(
+            `Detected all fans temperature spike. There could be an ambient temperature rise.`,
+            telemetry,
+          );
+          break;
+        }
+      }
     });
   }
 

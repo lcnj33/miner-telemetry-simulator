@@ -40,17 +40,70 @@ describe('SimulatorService', () => {
   });
 
   describe('processTelemetry', () => {
-    it('should report miner health failure', async () => {
+    it('should report miner health failure when up to down', async () => {
       const mockTelemetry = createMockTelemetry({ health: 'down' });
       const spyReportMinerExeception = jest
         .spyOn(reporterService, 'reportMinerExeception')
         .mockReturnValue();
 
+      await processorService.processTelemetry(
+        createMockTelemetry({ health: 'up' }),
+      );
       await processorService.processTelemetry(mockTelemetry);
 
       expect(spyReportMinerExeception).toBeCalledTimes(1);
       expect(spyReportMinerExeception).toBeCalledWith(
         'Miner health failure. State: down.',
+        mockTelemetry,
+      );
+    });
+
+    it('should not report failure when health was down', async () => {
+      const mockTelemetry = createMockTelemetry({ health: 'down' });
+      const spyReportMinerExeception = jest
+        .spyOn(reporterService, 'reportMinerExeception')
+        .mockReturnValue();
+
+      await processorService.processTelemetry(
+        createMockTelemetry({ health: 'down' }),
+      );
+      await processorService.processTelemetry(mockTelemetry);
+
+      expect(spyReportMinerExeception).toBeCalledTimes(0);
+    });
+
+    it('should report a gigahashrate dip', async () => {
+      const mockTelemetry = createMockTelemetry({ gigahashrate: 0 });
+      const spyReportMinerExeception = jest
+        .spyOn(reporterService, 'reportMinerExeception')
+        .mockReturnValue();
+
+      await processorService.processTelemetry(
+        createMockTelemetry({ gigahashrate: 100671.28 }),
+      );
+      await processorService.processTelemetry(mockTelemetry);
+
+      expect(spyReportMinerExeception).toBeCalledTimes(1);
+      expect(spyReportMinerExeception).toBeCalledWith(
+        'Detected a dip in gigahashrate. Gigahashrate: 0.',
+        mockTelemetry,
+      );
+    });
+
+    it('should report failure when pool connection is from up to down', async () => {
+      const mockTelemetry = createMockTelemetry({ pool_connection: 'down' });
+      const spyReportMinerExeception = jest
+        .spyOn(reporterService, 'reportMinerExeception')
+        .mockReturnValue();
+
+      await processorService.processTelemetry(
+        createMockTelemetry({ pool_connection: 'up' }),
+      );
+      await processorService.processTelemetry(mockTelemetry);
+
+      expect(spyReportMinerExeception).toBeCalledTimes(1);
+      expect(spyReportMinerExeception).toBeCalledWith(
+        'Miner is diconnected with the configured pool. State: down.',
         mockTelemetry,
       );
     });
@@ -61,26 +114,68 @@ describe('SimulatorService', () => {
         .spyOn(reporterService, 'reportMinerExeception')
         .mockReturnValue();
 
+      await processorService.processTelemetry(
+        createMockTelemetry({ temp1_in: 50 }),
+      );
       await processorService.processTelemetry(mockTelemetry);
 
       expect(spyReportMinerExeception).toBeCalledTimes(1);
       expect(spyReportMinerExeception).toBeCalledWith(
-        'Miner fan temperature spike. Sensor: temp1_in, Temperature: 100.',
+        'Detected a fan temperature spike. Sensor: temp1_in, Temperature: 100.',
         mockTelemetry,
       );
     });
 
-    it('should report fan failure', async () => {
+    it('should report a fan failure', async () => {
       const mockTelemetry = createMockTelemetry({ fan3: 0 });
       const spyReportMinerExeception = jest
         .spyOn(reporterService, 'reportMinerExeception')
         .mockReturnValue();
 
+      await processorService.processTelemetry(
+        createMockTelemetry({ fan3: 5000 }),
+      );
+
       await processorService.processTelemetry(mockTelemetry);
 
       expect(spyReportMinerExeception).toBeCalledTimes(1);
       expect(spyReportMinerExeception).toBeCalledWith(
-        'Miner fan failure. Fan: fan3, Speed: 0.',
+        'Detected a fan failure. Fan: fan3, Speed: 0.',
+        mockTelemetry,
+      );
+    });
+
+    it.only('should report multiple fans failure', async () => {
+      const mockTelemetry = createMockTelemetry({ fan1: 0, fan3: 0 });
+      const spyReportMinerExeception = jest
+        .spyOn(reporterService, 'reportMinerExeception')
+        .mockReturnValue();
+
+      await processorService.processTelemetry(
+        createMockTelemetry({ fan1: 5000, fan3: 5000 }),
+      );
+
+      await processorService.processTelemetry(mockTelemetry);
+
+      expect(spyReportMinerExeception).toBeCalledTimes(2);
+    });
+
+    it.only('should report all fans temperature spike', async () => {
+      const mockTelemetry = createMockTelemetry({
+        temp1_in: 100,
+        temp2_in: 100,
+        temp3_in: 100,
+        temp4_in: 100,
+      });
+      const spyReportMinerExeception = jest
+        .spyOn(reporterService, 'reportMinerExeception')
+        .mockReturnValue();
+
+      await processorService.processTelemetry(createMockTelemetry({}));
+      await processorService.processTelemetry(mockTelemetry);
+
+      expect(spyReportMinerExeception).toBeCalledWith(
+        'Detected all fans temperature spike. There could be an ambient temperature rise.',
         mockTelemetry,
       );
     });

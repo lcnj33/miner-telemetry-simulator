@@ -4,4 +4,5 @@ export const enum RULE_TYPE {
   MINER_FAN_SPEED = 'miner-fan-speed',
   POOL_CONNECTION = 'pool-connection',
   GIGAHASH_RATE = 'gigahash-rate',
+  AMBIENT_TEMP = 'ambient-temp',
 }
