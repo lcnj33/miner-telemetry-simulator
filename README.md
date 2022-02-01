@@ -32,7 +32,37 @@
 $ npm install
 ```
 
+The apps require Redis server.
+```bash
+$ brew install redis
+```
+
 ## Running the app
+
+Start Redis Server
+```bash
+$ brew services start redis
+```
+
+Start telemetry producer service
+```bash
+$ npm run start producer
+```
+
+Start consumer service
+```bash
+$ npm run start consumer
+```
+
+The number of simulated miners can be configured by env variable `NUM_OF_MINERS`.
+```bash
+NUM_OF_MINERS=15 npm run start consumer
+```
+
+Start change detection service
+```bash
+npm run start processor
+```
 
 ```bash
 # development
